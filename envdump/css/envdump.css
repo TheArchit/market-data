@@ -1,0 +1,82 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Verdana","Geneva","DejaVu Sans",sans-serif;
+    font-family: "Arial",sans-serif;
+    font-size: 12px;
+}
+
+h1, h2, h3 {
+    margin: 0;
+    padding: 0;
+    font-weight: normal;
+}
+
+h1 {
+    font-size: 2em;
+}
+
+h2 {
+    font-size: 2.4em;
+}
+
+h3 {
+    font-size: 1.6em;
+}
+
+a {
+    text-decoration: none;
+    # color: #BA0202;
+}
+
+a:hover {
+
+}
+
+#attr_tbl {
+    margin: 10px 0px 0px 0px;
+    padding: 0px;
+    max-width: 360px;
+    border-collapse: collapse;
+    border; 1px solid;
+}
+
+#attr_tbl th, td {
+
+
+
+}
+
+#attr_tbl th {
+    text-align: left;
+    height: 38px;
+    padding: 12px 26px 6px 5px;
+    border-bottom: 1px solid #B6BFD0;
+    border-top: 1px solid #B6BFD0;
+    font-size: 15px;
+    font-family: "Verdana","Geneva","DejaVu Sans",sans-serif;
+    color: #000000;
+    background: #E6E6E6;
+}
+
+#attr_tbl tr {
+    margin: 0px;
+    padding: 0px;
+}
+
+#attr_tbl td {
+    border-bottom: 1px solid #B6BFD0;
+    border-left: none;
+    margin: 0px 0px;
+    padding: 5px 5px 5px 5px;
+}
+
+/* controls the attribute column */
+
+.attr {
+    color: #000000;
+}
+
+.val, .crit {
+    color: #808080;
+}

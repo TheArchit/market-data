@@ -1,0 +1,27 @@
+CONFDIR="${GENEOS_HOME}/etc/geneos"
+LOGDIR="${GENEOS_HOME}/var/log/geneos"
+RUNDIR="${GENEOS_HOME}/var/run/geneos"
+
+GATEWAY_ROOT="${GENEOS_HOME}/gateway"
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GATEWAY_ROOT}/lib"
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GATEWAY_ROOT}/compat"
+
+NETPROBE_ROOT="${GENEOS_HOME}/netprobe"
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${NETPROBE_ROOT}"
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${NETPROBE_ROOT}/compat"
+
+# Java library path
+JRE_HOME="/usr/java/jdk1.5.0_05/jre"
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${JRE_HOME}/lib/i386"
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${JRE_HOME}/lib/i386/client"
+PATH="${PATH}:${JRE_HOME}/bin"
+
+# Path to 3rd party libraries
+LIB_ROOT="${GENEOS_HOME}/lib"
+
+# Exports
+export JRE_HOME
+export PATH
+export INCLUDE
+export LIB
+export LD_LIBRARY_PATH
