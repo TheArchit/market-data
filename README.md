@@ -28,5 +28,5 @@ attribute definitions. The result is piped through sendmail.
 
 geneos:
 ------
-Geneos deployment script and symlinks to control its execution flow
+Geneos deployment script and symlinks to control its execution flow.
 Geneos Gateway and NetProbe rc control scripts
