@@ -1,0 +1,246 @@
+#!/bin/bash
+#
+
+TRUE="0"
+FALSE="1"
+purge_flag="${FALSE}"
+
+pkg_dir="pkg/geneos-bundles"
+pkg_base="${pkg_dir}/geneos-home.tar.gz"
+pkg_netprobe="${pkg_dir}/netprobe.linux.GA2011.2.1-120301.tar.gz"
+pkg_scripts="${pkg_dir}/toolkit-scripts.tar.gz"
+pkg_gateway="${pkg_dir}/gateway2.linux.GA2011.2.1-120222.tar.gz"
+pkg_libmssql="${pkg_dir}/lib-mssql.tar.gz"
+pkg_libsybase="${pkg_dir}/lib-sybase.tar.gz"
+pkg_rc="${pkg_dir}/rc.d.tar.gz"
+tmpdir="/tmp/pkg_geneos"
+
+# -- end of config
+
+function="${0##*-}"
+hosts=( ${*} )
+f_width="%-76s"
+
+function purge_flag () { return "${purge_flag}" ; }
+
+function usage () {
+
+    cat <<EOF
+
+usage: ./deploy-{option} [--purge] host1 host2...
+
+where {option}:
+      gateway         Deploys the gateway
+      netprobe        Deploys the netprobe
+      libmssql        Deploys MS-SQL libraries
+      libsybase       Deploys Sybase (OCS_15) libraries
+      rc              Deploys the redhat init scripts
+
+    --purge           Wipe out geneos from remote hosts before deployment
+
+The "--purge" option is recommended when setting up new hosts
+
+EOF
+    exit 127
+}
+
+function disclaimer () {
+
+    clear
+
+    printf "%s" "Are you ready to continue? (yes/no): "
+
+    read_answer || bailout
+    printf "\n%s\n" "OK. Enter sudo password if prompted..."
+    sudo_check
+}
+
+function read_answer () {
+
+    local answer
+
+    while read answer ; do
+        case ${answer} in
+            "yes"|"y") return 0 ;;
+            "no"|"n")  return 1 ;;
+            *) printf "%s\n" "Answer [y|yes]/[n|no]:"
+        esac
+    done
+}
+
+function sudo_check () {
+
+    sudo su -c "echo &>/dev/null" ||
+        no_sudo ; return 0
+}
+
+function no_sudo () {
+
+    cat <<EOF
+
+You don't seem to have sudo access to "root". Bailing out...
+EOF
+
+    bailout
+}
+
+function bailout () {
+
+    cat <<EOF
+[ interrupt caught ] - user aborted
+EOF
+    exit 0
+}
+
+function printstat () {
+
+    [ "${1}" == 0 ] && printf "%s\n" "OK"
+    [ "${1}" != 0 ] && printf "%s\n" "FAIL"
+}
+
+# wipe out everything under /opt/geneos and /home/geneos
+# and set up the "geneos" user with uid/gid 1100 on the
+# specified remote hosts. Creates a basic filesystem
+# structure for geneos's packages to sit on top of.
+
+function do_purge () {
+
+    local n=
+
+        cat <<EOF
+
+WARNING: You have specified the "--purge" flag as an argument.
+This will remove all geneos files from the target hosts prior to
+deployment.
+
+EOF
+
+    printf "%s" "Is this what you want? (yes/no): "
+
+    read_answer || bailout
+    sudo_check
+
+    for n in ${*} ; do
+        printf "${f_width}" "${n}: purging..."
+        sudo ssh -q "root@${n}" '
+        {
+            groupadd -f -g 1100 geneos &&
+                useradd -c "" -d /opt/geneos -g geneos -m \
+                -s /bin/bash -u 1100 geneos
+            usermod -c "" -g geneos -d /opt/geneos geneos
+            kill -9 $(ps -U geneos -o pid --no-headers 2>/dev/null)
+            sleep 2
+            rm -rf /opt/geneos/* /home/geneos
+            rm /etc/init.d/{netprobe,gateway}
+            cd /opt/geneos/ &&
+            {
+                chown -R geneos:geneos /opt/geneos
+                chmod 750 /opt/geneos
+            }
+        } &>/dev/null ' ; ret="${?}"
+        printstat "${ret}"
+    done
+}
+
+function pkgcpy () {
+
+    local package="${1}" host="${2}"
+
+    printf "${f_width}" "${host}: copying ${package##*/}..."
+
+    {
+        sudo ssh -q "root@${host}" "mkdir ${tmpdir}"
+        sudo scp -q "${package}" "root@${host}:${tmpdir}"
+        ret="${?}"
+
+    } &>/dev/null
+
+    printstat "${ret}"
+    return "${ret}"
+}
+
+function pkg_cleanup () {
+
+    sudo ssh -q "root@${host}" "rm -rf ${tmpdir}"
+    return "${?}"
+}
+
+function deploy () {
+
+    local src_package="${1}"
+    local dst_package="${1##*/}"
+    local host="${2}"
+
+    pkgcpy "${src_package}" "${host}" || return 1
+    printf "${f_width}" "${host}: extracting ${dst_package}..."
+    sudo ssh "root@${host}" "
+        cd /opt/geneos &&
+            tar pPzxf ${tmpdir}/${dst_package}
+        " ; ret="${?}"
+
+    [ "${ret}" == 0 ] && pkg_cleanup "${host}" "${tmpdir}"
+
+
+    printstat "${ret}"
+    return "${ret}"
+}
+
+function netprobe_restart () {
+
+    local host="${1}"
+
+    printf "${f_width}" "${host}: restarting netprobe..."
+    sudo ssh -q "root@${host}" '
+    if [ -f /etc/init.d/netprobe ] ; then
+        chkconfig --add netprobe
+        /etc/init.d/netprobe restart &>/dev/null
+    fi
+    if [ -f /etc/init.d/gateway ] ; then
+        chkconfig --add gateway
+    fi
+    '
+    printstat "${ret}"
+    return "${?}"
+}
+
+function do_deploy () {
+
+    local component="\$pkg_${function}"
+
+    disclaimer || return 1
+    purge_flag && do_purge ${*}
+
+    sudo_check
+
+    for host in ${*} ; do
+        if purge_flag ; then
+            deploy "${pkg_base}" "${host}"
+            deploy "${pkg_rc}" "${host}"
+        fi
+        eval deploy "${component}" "${host}" ||
+            continue
+
+        netprobe_restart "${host}"
+    done
+}
+
+
+case "${function}" in
+    gateway|netprobe|rc|libmssql|libsybase|scripts)
+        [ "${#hosts[@]}" -gt "0" ] || usage
+        for n in ${hosts[@]} ; do
+            case "${n}" in
+                "--purge")
+                hosts=( ${hosts[@]/${n}} )
+                purge_flag="${TRUE}"
+            esac
+        done
+        do_deploy ${hosts[@]}
+    ;;
+    *)
+        usage
+        exit 127
+    ;;
+esac
+
+exit "${?}"
