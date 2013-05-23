@@ -1,0 +1,92 @@
+#!/bin/bash
+
+function @include () {
+
+    [ -f "${1}" ] && . "${1}"
+    return 0
+}
+
+function chkpidf () {
+
+    local pidfile=${1:-/var/log/${0}.pid}
+    local pid=
+
+    if [ -f "${pidfile}" ] ; then
+        while read line ; do
+           [ -d "/proc/${line}" ] && pid="${pid} ${line}"
+        done < ${pidfile}
+    fi
+    if [ -n "${pid}" ] ; then
+        return 1
+    fi
+    return 0
+}
+
+function chkpid () {
+
+    local pids=${*} i=
+
+    for i in ${pids} ; do
+        [ -d "/proc/${i}" ] || return 1
+    done
+    return 0
+}
+
+function daemonise () {
+
+    local pidfile="/var/run/${0}.pid"
+    local corelimit=
+
+    if [ "${1}" == "-c" ] ; then
+        corelimit="${2}"
+        shift 2
+    fi
+    if [ "${1}" == "-p" ] ; then
+        pidfile="${2}"
+        shift 2
+    fi
+
+    if [ -n "${corelimit}" ] ; then
+        ulimit -c ${corelimit}
+            /bin/bash -c "${*}" 2>&1 > /dev/null &
+    else
+        /bin/bash -c "${*}" 2>&1 > /dev/null &
+    fi
+        printf "%s\n" "${!}" >> "${pidfile}"
+    return 0
+}
+
+function killpgid () {
+
+    local pidfile="/var/run/${0}.pid"
+    local delay="3"
+    local pid= pgid=
+
+    if [ "${1}" == "-p" ] ; then
+        pidfile="${2}"
+        shift 2
+    fi
+    if [ "${1}" == "-d" ] ; then
+        delay="${2}"
+        shift 2
+    fi
+
+    [ -f "${pidfile}" ] || return 1
+
+    while read pid ; do
+        if chkpid "${pid}" ; then
+        pgid=$(printf "%s" $(/bin/ps h -p "${pid}" -o "%r"))
+            kill -TERM "-${pgid}" ; sleep 1
+            chkpid "${pid}" && sleep "${delay}" && \
+                chkpid "${pid}" && \
+                {
+                    kill -KILL "-${pgid}"
+                    continue
+                }
+        fi
+    done < ${pidfile}
+
+    rm "${pidfile}"
+    return 0
+}
+
