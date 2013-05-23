@@ -1,6 +1,0 @@
-# Microsoft SQL Server library path
-MSSQL_LIBS="${LIB_ROOT}/sqlServerLib"
-ODBCINSTINI="${MSSQL_LIBS}/odbcinst.ini"
-LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${MSSQL_LIBS}"
-
-export ODBCINSTINI
