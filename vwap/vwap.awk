@@ -27,10 +27,27 @@ function calc_vwap()
     delete volume
 }
 
+function f_exists(path,    cmd, ret)
+{
+    cmd = ("[ -r " path " ]")
+    ret = system(cmd)
+    close(cmd)
+    return ret
+}
+
 BEGIN \
 {
-    for (f=1; f<=(ARGC - 1); f++)
+    if ((ARGC) < 1) exit 1
+
+    for (f=1; f<ARGC; f++)
     {
+        if ((ARGV[f] != "-" && f_exists(ARGV[f]) > 0))
+        {
+            printf "%s\n", ("vwap.awk: " ARGV[f] " - no such file") > \
+                   "/dev/stderr"
+            continue
+        }
+
         while (getline < ARGV[f])
         {
             if (++line_c < 2) continue
