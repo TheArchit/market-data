@@ -13,7 +13,7 @@ def calc_vwap(row):
             data[key] = [ data[key][0] + qty , data[key][1] + multi ]
         except KeyError:
             data[key] = [ qty, multi ]
-        except UnboundLocalError:
+        except NameError:
             data = { key: [ qty, multi ] }
         else:
             pass
